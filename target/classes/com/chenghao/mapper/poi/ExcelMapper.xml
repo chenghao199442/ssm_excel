@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.chenghao.poi.mapper.ExcelMapper">
+    <resultMap id="BaseResultMap" type="com.chenghao.poi.domain.Emp">
+        <id column="id" jdbcType="INTEGER" property="id"/>
+        <result column="name" jdbcType="VARCHAR" property="name"/>
+        <result column="sex" jdbcType="CHAR" property="sex"/>
+        <result column="email" jdbcType="VARCHAR" property="email"/>
+        <result column="dept_id" jdbcType="INTEGER" property="deptId"/>
+    </resultMap>
+
+    <resultMap type="com.chenghao.poi.domain.Emp" id="WithDeptResultMap">
+        <id column="id" jdbcType="INTEGER" property="id"/>
+        <result column="name" jdbcType="VARCHAR" property="name"/>
+        <result column="sex" jdbcType="CHAR" property="sex"/>
+        <result column="email" jdbcType="VARCHAR" property="email"/>
+        <result column="dept_id" jdbcType="INTEGER" property="deptId"/>
+        <!-- 指定联合查询出的部门字段的封装 -->
+        <association property="deptName" javaType="com.chenghao.poi.domain.Dept">
+            <id column="d_id" property="dId"/>
+            <result column="d_name" property="dName"/>
+        </association>
+    </resultMap>
+
+    <insert id="inputExcel">
+		insert into emp (name,sex,email,dept_id) values
+		(#{name },#{sex },#{email },#{dept_id })
+	</insert>
+
+    <sql id="WithDept_Column_List">
+		e.id, e.name, e.sex, e.email, e.dept_id, d.d_id, d.d_name
+	</sql>
+
+    <sql id="Example_Where_Clause">
+        <where>
+            <foreach collection="oredCriteria" item="criteria" separator="or">
+                <if test="criteria.valid">
+                    <trim prefix="(" suffix=")" prefixOverrides="and">
+                        <foreach collection="criteria.criteria" item="criterion">
+                            <choose>
+                                <when test="criterion.noValue">
+                                    and ${criterion.condition}
+                                </when>
+                                <when test="criterion.singleValue">
+                                    and ${criterion.condition} #{criterion.value}
+                                </when>
+                                <when test="criterion.betweenValue">
+                                    and ${criterion.condition} #{criterion.value} and
+                                    #{criterion.secondValue}
+                                </when>
+                                <when test="criterion.listValue">
+                                    and ${criterion.condition}
+                                    <foreach collection="criterion.value" item="listItem"
+                                             open="(" close=")" separator=",">
+                                        #{listItem}
+                                    </foreach>
+                                </when>
+                            </choose>
+                        </foreach>
+                    </trim>
+                </if>
+            </foreach>
+        </where>
+    </sql>
+
+    <select id="getAll" resultMap="WithDeptResultMap">
+        select
+        <if test="distinct">
+            distinct
+        </if>
+        <include refid="WithDept_Column_List"/>
+        FROM emp e
+        left join dept d on e.`dept_id`=d.`d_id` order by e.id
+        <if test="_parameter != null">
+            <include refid="Example_Where_Clause"/>
+        </if>
+    </select>
+
+    <select id="getTenDataEmp" resultMap="WithDeptResultMap">
+        select
+          e.id, e.name, e.sex, e.email, e.dept_id
+        FROM emp e where e.email is null order by e.id ASC limit 5
+    </select>
+
+    <update id="updateNameByEmpsBatch" parameterType="java.util.Map">
+        update emp e set e.email = #{name}
+        WHERE e.email is null and e.id IN
+        <foreach collection="emps" item="emp" index="index" open="(" separator="," close=")">
+            #{emp.id}
+        </foreach>
+    </update>
+
+</mapper>
